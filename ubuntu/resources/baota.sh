@@ -21,7 +21,31 @@ fi
 
 if [ -d /www/server/pgsql ]; then
   BT_PGSQL_PATH="/www/server/pgsql"
+else
+  # Try alternative PostgreSQL locations on Baota
+  if [ -d /www/server/postgresql ]; then
+    BT_PGSQL_PATH="/www/server/postgresql"
+  elif [ -d /usr/lib/postgresql ]; then
+    BT_PGSQL_PATH="/usr/lib/postgresql"
+  elif which psql >/dev/null 2>&1; then
+    BT_PGSQL_PATH=$(dirname $(which psql))
+  fi
 fi
+
+find_psql() {
+  if [ -n "$BT_PGSQL_PATH" ] && [ -f "${BT_PGSQL_PATH}/psql" ]; then
+    echo "${BT_PGSQL_PATH}/psql"
+    return 0
+  elif [ -n "$BT_PGSQL_PATH" ] && [ -f "${BT_PGSQL_PATH}/bin/psql" ]; then
+    echo "${BT_PGSQL_PATH}/bin/psql"
+    return 0
+  elif which psql >/dev/null 2>&1; then
+    which psql
+    return 0
+  fi
+  echo ""
+  return 1
+}
 
 find_php_ini() {
   if [ -n "$BT_PHP_BASE" ]; then
@@ -39,3 +63,4 @@ find_php_ini() {
 }
 
 export BT_NGINX_PATH BT_PHP_BASE BT_PHP_VERSION BT_PGSQL_PATH BT_WEBROOT
+export -f find_psql

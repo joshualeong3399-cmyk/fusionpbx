@@ -43,7 +43,7 @@ domain_name=$(hostname -I | cut -d ' ' -f1)
 domain_uuid=$(php /www/wwwroot/fusionpbx/resources/uuid.php);
 
 #add the domain name
-psql --host=$database_host --port=$database_port --username=$database_username -c "insert into v_domains (domain_uuid, domain_name, domain_enabled) values('$domain_uuid', '$domain_name', 'true');"
+/www/server/pgsql/bin/psql --host=$database_host --port=$database_port --username=$database_username -c "insert into v_domains (domain_uuid, domain_name, domain_enabled) values('$domain_uuid', '$domain_name', 'true');"
 
 #app defaults
 cd /www/wwwroot/fusionpbx && php /www/wwwroot/fusionpbx/core/upgrade/upgrade_domains.php
@@ -58,7 +58,7 @@ else
 	user_password=$system_password
 fi
 password_hash=$(php -r "echo md5('$user_salt$user_password');");
-psql --host=$database_host --port=$database_port --username=$database_username -t -c "insert into v_users (user_uuid, domain_uuid, username, password, salt, user_enabled) values('$user_uuid', '$domain_uuid', '$user_name', '$password_hash', '$user_salt', 'true');"
+/www/server/pgsql/bin/psql --host=$database_host --port=$database_port --username=$database_username -t -c "insert into v_users (user_uuid, domain_uuid, username, password, salt, user_enabled) values('$user_uuid', '$domain_uuid', '$user_name', '$password_hash', '$user_salt', 'true');"
 
 #get the superadmin group_uuid
 group_uuid=$(psql --host=$database_host --port=$database_port --username=$database_username -t -c "select group_uuid from v_groups where group_name = 'superadmin';");
@@ -67,7 +67,7 @@ group_uuid=$(echo $group_uuid | sed 's/^[[:blank:]]*//;s/[[:blank:]]*$//')
 #add the user to the group
 user_group_uuid=$(/usr/bin/php /www/wwwroot/fusionpbx/resources/uuid.php);
 group_name=superadmin
-psql --host=$database_host --port=$database_port --username=$database_username -c "insert into v_user_groups (user_group_uuid, domain_uuid, group_name, group_uuid, user_uuid) values('$user_group_uuid', '$domain_uuid', '$group_name', '$group_uuid', '$user_uuid');"
+/www/server/pgsql/bin/psql --host=$database_host --port=$database_port --username=$database_username -c "insert into v_user_groups (user_group_uuid, domain_uuid, group_name, group_uuid, user_uuid) values('$user_group_uuid', '$domain_uuid', '$group_name', '$group_uuid', '$user_uuid');"
 
 #update the php configuration
 sed -i 's/user nginx/user freeswitch daemon/g' /etc/nginx/nginx.conf

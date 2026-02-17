@@ -17,10 +17,10 @@ fi
 export PGPASSWORD=$database_password
 
 #update the database password
-#sudo -u postgres psql --host=$database_host --port=$database_port --username=$database_username -c "ALTER USER fusionpbx WITH PASSWORD '$database_password';"
-#sudo -u postgres psql --host=$database_host --port=$database_port --username=$database_username -c "ALTER USER freeswitch WITH PASSWORD '$database_password';"
-sudo -u postgres psql -c "ALTER USER fusionpbx WITH PASSWORD '$database_password';"
-sudo -u postgres psql -c "ALTER USER freeswitch WITH PASSWORD '$database_password';"
+#sudo -u postgres /www/server/pgsql/bin/psql --host=$database_host --port=$database_port --username=$database_username -c "ALTER USER fusionpbx WITH PASSWORD '$database_password';"
+#sudo -u postgres /www/server/pgsql/bin/psql --host=$database_host --port=$database_port --username=$database_username -c "ALTER USER freeswitch WITH PASSWORD '$database_password';"
+sudo -u postgres /www/server/pgsql/bin/psql -c "ALTER USER fusionpbx WITH PASSWORD '$database_password';"
+sudo -u postgres /www/server/pgsql/bin/psql -c "ALTER USER freeswitch WITH PASSWORD '$database_password';"
 
 #install the database backup
 cp backup/fusionpbx-backup /etc/cron.daily
@@ -63,7 +63,7 @@ fi
 domain_uuid=$(/usr/bin/php /www/wwwroot/fusionpbx/resources/uuid.php);
 
 #add the domain name
-psql --host=$database_host --port=$database_port --username=$database_username -c "insert into v_domains (domain_uuid, domain_name, domain_enabled) values('$domain_uuid', '$domain_name', 'true');"
+/www/server/pgsql/bin/psql --host=$database_host --port=$database_port --username=$database_username -c "insert into v_domains (domain_uuid, domain_name, domain_enabled) values('$domain_uuid', '$domain_name', 'true');"
 
 #run app defaults
 cd /www/wwwroot/fusionpbx && /usr/bin/php /www/wwwroot/fusionpbx/core/upgrade/upgrade.php --defaults
@@ -78,7 +78,7 @@ else
 	user_password=$system_password
 fi
 password_hash=$(php -r "echo md5('$user_salt$user_password');");
-psql --host=$database_host --port=$database_port --username=$database_username -t -c "insert into v_users (user_uuid, domain_uuid, username, password, salt, user_enabled) values('$user_uuid', '$domain_uuid', '$user_name', '$password_hash', '$user_salt', 'true');"
+/www/server/pgsql/bin/psql --host=$database_host --port=$database_port --username=$database_username -t -c "insert into v_users (user_uuid, domain_uuid, username, password, salt, user_enabled) values('$user_uuid', '$domain_uuid', '$user_name', '$password_hash', '$user_salt', 'true');"
 
 #get the superadmin group_uuid
 #echo "psql --host=$database_host --port=$database_port --username=$database_username -qtAX -c \"select group_uuid from v_groups where group_name = 'superadmin';\""
@@ -88,7 +88,7 @@ group_uuid=$(psql --host=$database_host --port=$database_port --username=$databa
 user_group_uuid=$(/usr/bin/php /www/wwwroot/fusionpbx/resources/uuid.php);
 group_name=superadmin
 #echo "insert into v_user_groups (user_group_uuid, domain_uuid, group_name, group_uuid, user_uuid) values('$user_group_uuid', '$domain_uuid', '$group_name', '$group_uuid', '$user_uuid');"
-psql --host=$database_host --port=$database_port --username=$database_username -c "insert into v_user_groups (user_group_uuid, domain_uuid, group_name, group_uuid, user_uuid) values('$user_group_uuid', '$domain_uuid', '$group_name', '$group_uuid', '$user_uuid');"
+/www/server/pgsql/bin/psql --host=$database_host --port=$database_port --username=$database_username -c "insert into v_user_groups (user_group_uuid, domain_uuid, group_name, group_uuid, user_uuid) values('$user_group_uuid', '$domain_uuid', '$group_name', '$group_uuid', '$user_uuid');"
 
 #update xml_cdr url, user and password
 xml_cdr_username=$(dd if=/dev/urandom bs=1 count=20 2>/dev/null | base64 | sed 's/[=\+//]//g')

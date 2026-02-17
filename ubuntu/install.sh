@@ -23,7 +23,8 @@ apt-get install -y systemd-sysv
 apt-get install -y ca-certificates
 apt-get install -y dialog
 apt-get install -y nano
-apt-get install -y nginx
+#Skip nginx - Baota Panel already provides it
+#apt-get install -y nginx
 apt-get install -y build-essential
 
 #SNMP
@@ -31,8 +32,8 @@ apt-get install -y snmpd
 echo "rocommunity public" > /etc/snmp/snmpd.conf
 service snmpd restart
 
-#IPTables
-resources/iptables.sh
+#Skip firewall setup - Baota Panel manages firewall
+#resources/iptables.sh
 
 #sngrep
 resources/sngrep.sh
@@ -40,14 +41,14 @@ resources/sngrep.sh
 #FusionPBX
 resources/fusionpbx.sh
 
-#NGINX web server (configured to use BaoTA paths)
-resources/nginx.sh
+#Skip NGINX configuration - Baota Panel already manages NGINX
+#resources/nginx.sh
 
-#PHP (configured to use BaoTA paths)
-resources/php.sh
+#Skip PHP configuration - Baota Panel already manages PHP
+#resources/php.sh
 
-#Postgres (configured to use BaoTA paths)
-resources/postgresql.sh
+#Skip PostgreSQL configuration - Baota Panel already manages PostgreSQL
+#resources/postgresql.sh
 
 #Optional Applications
 resources/applications.sh

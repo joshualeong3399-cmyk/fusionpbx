@@ -6,6 +6,13 @@ cd "$(dirname "$0")"
 #includes
 . ./config.sh
 . ./colors.sh
+. ./baota.sh
+
+#Remove old FusionPBX installation if it exists to avoid conflicts
+if [ -d /var/www/fusionpbx ]; then
+	echo "Removing old FusionPBX installation from /var/www/fusionpbx..."
+	rm -rf /var/www/fusionpbx
+fi
 
 #database details
 database_username=fusionpbx
@@ -17,10 +24,11 @@ fi
 export PGPASSWORD=$database_password
 
 #update the database password
-#sudo -u postgres psql --host=$database_host --port=$database_port --username=$database_username -c "ALTER USER fusionpbx WITH PASSWORD '$database_password';"
-#sudo -u postgres psql --host=$database_host --port=$database_port --username=$database_username -c "ALTER USER freeswitch WITH PASSWORD '$database_password';"
-sudo -u postgres psql -c "ALTER USER fusionpbx WITH PASSWORD '$database_password';"
-sudo -u postgres psql -c "ALTER USER freeswitch WITH PASSWORD '$database_password';"
+#sudo -u postgres /www/server/pgsql/bin/psql --host=$database_host --port=$database_port --username=$database_username -c "ALTER USER fusionpbx WITH PASSWORD '$database_password';"
+#sudo -u postgres /www/server/pgsql/bin/psql --host=$database_host --port=$database_port --username=$database_username -c "ALTER USER freeswitch WITH PASSWORD '$database_password';"
+PSQL_CMD=$(find_psql)
+sudo -u postgres $PSQL_CMD -c "ALTER USER fusionpbx WITH PASSWORD '$database_password';"
+sudo -u postgres $PSQL_CMD -c "ALTER USER freeswitch WITH PASSWORD '$database_password';"
 
 #install the database backup
 cp backup/fusionpbx-backup /etc/cron.daily
@@ -30,13 +38,18 @@ chmod 755 /etc/cron.daily/fusionpbx-maintenance
 sed -i "s/zzz/$database_password/g" /etc/cron.daily/fusionpbx-backup
 sed -i "s/zzz/$database_password/g" /etc/cron.daily/fusionpbx-maintenance
 
-#add the config.conf
+#add the config.conf to the FusionPBX directory
+mkdir -p /www/wwwroot/fusionpbx
+cp fusionpbx/config.conf /www/wwwroot/fusionpbx/config.conf
+sed -i 's|{database_host}|'"$database_host"'|g' /www/wwwroot/fusionpbx/config.conf
+sed -i 's|{database_name}|'"$database_name"'|g' /www/wwwroot/fusionpbx/config.conf
+sed -i 's|{database_username}|'"$database_username"'|g' /www/wwwroot/fusionpbx/config.conf
+sed -i 's|{database_password}|'"$database_password"'|g' /www/wwwroot/fusionpbx/config.conf
+
+#also copy to /etc/fusionpbx for reference
 mkdir -p /etc/fusionpbx
-cp fusionpbx/config.conf /etc/fusionpbx
-sed -i /etc/fusionpbx/config.conf -e s:"{database_host}:$database_host:"
-sed -i /etc/fusionpbx/config.conf -e s:"{database_name}:$database_name:"
-sed -i /etc/fusionpbx/config.conf -e s:"{database_username}:$database_username:"
-sed -i /etc/fusionpbx/config.conf -e s:"{database_password}:$database_password:"
+cp /www/wwwroot/fusionpbx/config.conf /etc/fusionpbx/config.conf
+chown www:www /www/wwwroot/fusionpbx/config.conf
 
 #add the database schema
 cd /www/wwwroot/fusionpbx && /usr/bin/php /www/wwwroot/fusionpbx/core/upgrade/upgrade.php --schema
@@ -55,7 +68,8 @@ fi
 domain_uuid=$(/usr/bin/php /www/wwwroot/fusionpbx/resources/uuid.php);
 
 #add the domain name
-psql --host=$database_host --port=$database_port --username=$database_username -c "insert into v_domains (domain_uuid, domain_name, domain_enabled) values('$domain_uuid', '$domain_name', 'true');"
+PSQL_CMD=$(find_psql)
+$PSQL_CMD --host=$database_host --port=$database_port --username=$database_username -c "insert into v_domains (domain_uuid, domain_name, domain_enabled) values('$domain_uuid', '$domain_name', 'true');"
 
 #run app defaults
 cd /www/wwwroot/fusionpbx && /usr/bin/php /www/wwwroot/fusionpbx/core/upgrade/upgrade.php --defaults
@@ -70,7 +84,7 @@ else
 	user_password=$system_password
 fi
 password_hash=$(/usr/bin/php -r "echo md5('$user_salt$user_password');");
-psql --host=$database_host --port=$database_port --username=$database_username -t -c "insert into v_users (user_uuid, domain_uuid, username, password, salt, user_enabled) values('$user_uuid', '$domain_uuid', '$user_name', '$password_hash', '$user_salt', 'true');"
+/www/server/pgsql/bin/psql --host=$database_host --port=$database_port --username=$database_username -t -c "insert into v_users (user_uuid, domain_uuid, username, password, salt, user_enabled) values('$user_uuid', '$domain_uuid', '$user_name', '$password_hash', '$user_salt', 'true');"
 
 #get the superadmin group_uuid
 #echo "psql --host=$database_host --port=$database_port --username=$database_username -qtAX -c \"select group_uuid from v_groups where group_name = 'superadmin';\""
@@ -80,16 +94,16 @@ group_uuid=$(psql --host=$database_host --port=$database_port --username=$databa
 user_group_uuid=$(/usr/bin/php /www/wwwroot/fusionpbx/resources/uuid.php);
 group_name=superadmin
 #echo "insert into v_user_groups (user_group_uuid, domain_uuid, group_name, group_uuid, user_uuid) values('$user_group_uuid', '$domain_uuid', '$group_name', '$group_uuid', '$user_uuid');"
-psql --host=$database_host --port=$database_port --username=$database_username -c "insert into v_user_groups (user_group_uuid, domain_uuid, group_name, group_uuid, user_uuid) values('$user_group_uuid', '$domain_uuid', '$group_name', '$group_uuid', '$user_uuid');"
+/www/server/pgsql/bin/psql --host=$database_host --port=$database_port --username=$database_username -c "insert into v_user_groups (user_group_uuid, domain_uuid, group_name, group_uuid, user_uuid) values('$user_group_uuid', '$domain_uuid', '$group_name', '$group_uuid', '$user_uuid');"
 
 #update xml_cdr url, user and password
 xml_cdr_username=$(dd if=/dev/urandom bs=1 count=20 2>/dev/null | base64 | sed 's/[=\+//]//g')
 xml_cdr_password=$(dd if=/dev/urandom bs=1 count=20 2>/dev/null | base64 | sed 's/[=\+//]//g')
-sed -i /etc/freeswitch/autoload_configs/xml_cdr.conf.xml -e s:"{v_http_protocol}:http:"
-sed -i /etc/freeswitch/autoload_configs/xml_cdr.conf.xml -e s:"{domain_name}:$database_host:"
-sed -i /etc/freeswitch/autoload_configs/xml_cdr.conf.xml -e s:"{v_project_path}::"
-sed -i /etc/freeswitch/autoload_configs/xml_cdr.conf.xml -e s:"{v_user}:$xml_cdr_username:"
-sed -i /etc/freeswitch/autoload_configs/xml_cdr.conf.xml -e s:"{v_pass}:$xml_cdr_password:"
+sed -i 's|{v_http_protocol}|http|g' /etc/freeswitch/autoload_configs/xml_cdr.conf.xml
+sed -i 's|{domain_name}|'"$database_host"'|g' /etc/freeswitch/autoload_configs/xml_cdr.conf.xml
+sed -i 's|{v_project_path}||g' /etc/freeswitch/autoload_configs/xml_cdr.conf.xml
+sed -i 's|{v_user}|'"$xml_cdr_username"'|g' /etc/freeswitch/autoload_configs/xml_cdr.conf.xml
+sed -i 's|{v_pass}|'"$xml_cdr_password"'|g' /etc/freeswitch/autoload_configs/xml_cdr.conf.xml
 
 #update application defaults
 cd /www/wwwroot/fusionpbx && /usr/bin/php /www/wwwroot/fusionpbx/core/upgrade/upgrade.php --defaults

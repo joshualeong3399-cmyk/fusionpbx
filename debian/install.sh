@@ -34,17 +34,17 @@ service snmpd restart
 #disable vi visual mode
 echo "set mouse-=a" >> ~/.vimrc
 
-#IPTables
-resources/iptables.sh
+#Skip firewall setup - Baota Panel manages firewall
+#resources/iptables.sh
 
 #sngrep
 resources/sngrep.sh
 
-#PHP (configured to use BaoTA paths)
-resources/php.sh
+#Skip PHP configuration - Baota Panel already manages PHP
+#resources/php.sh
 
-#NGINX web server (configured to use BaoTA paths)
-resources/nginx.sh
+#Skip NGINX configuration - Baota Panel already manages NGINX
+#resources/nginx.sh
 
 #FusionPBX
 resources/fusionpbx.sh
@@ -55,8 +55,8 @@ resources/applications.sh
 #Fail2ban
 resources/fail2ban.sh
 
-#Postgres (configured to use BaoTA paths)
-resources/postgresql.sh
+#Skip PostgreSQL configuration - Baota Panel already manages PostgreSQL
+#resources/postgresql.sh
 
 #FreeSWITCH
 resources/switch.sh
